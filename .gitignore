@@ -1,0 +1,19 @@
+# 依赖目录
+node_modules/
+core/build/
+
+# 构建输出
+dist/
+renderer/dist/
+
+# 环境文件
+.env
+.DS_Store
+
+# 日志
+*.log
+npm-debug.log*
+
+# IDE 配置
+.vscode/
+.idea/
