@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 
 let mainWindow
@@ -10,16 +10,21 @@ function createWindow() {
     transparent: true,
     frame: false,
     webPreferences: {
-      preload: path.join(__dirname, '../renderer/src/preload.js'),
+      preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true
     }
   })
 
-  mainWindow.loadURL(
-    process.env.NODE_ENV === 'development'
-      ? 'http://localhost:5173'
-      : `file://${path.join(__dirname, '../renderer/dist/index.html')}`
-  )
+  // 开发模式加载Vite服务器
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.loadURL('http://localhost:5173')
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../renderer/dist/index.html'))
+  }
+
+  mainWindow.setIgnoreMouseEvents(true, {
+    forward: true
+  })
 }
 
 app.whenReady().then(createWindow)
