@@ -1,7 +1,11 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [vue()],
+  base: './',
+  build: {
+    assetsInlineLimit: 0 
+    // 强制所有资源作为文件输出
+  }
 })
