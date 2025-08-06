@@ -1,5 +1,31 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
+const { spawn } = require('child_process')
+
+// 音效播放器
+function playAudioFile(filePath) {
+  if (process.platform === 'win32') {
+    spawn('cmd', ['/c', `start "" "${filePath}"`])
+  } else if (process.platform === 'darwin') {
+    spawn('afplay', [filePath])
+  } else {
+    spawn('aplay', [filePath])
+  }
+}
+
+ipcMain.on('play-sound', (_, soundFile) => {
+  const soundPath = path.join(
+    __dirname, 
+    '../renderer/src/assets/sounds', 
+    soundFile
+  )
+  
+  if (require('fs').existsSync(soundPath)) {
+    playAudioFile(soundPath)
+  } else {
+    console.error('音效文件不存在:', soundPath)
+  }
+})
 
 let mainWindow;
 

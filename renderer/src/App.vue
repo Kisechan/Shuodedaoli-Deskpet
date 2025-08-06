@@ -9,7 +9,16 @@ const tooltips = [
   "为什么不开大！！",
   "（凤鸣）",
 ];
-const soundFiles = ["example.mp3"];
+const soundFiles = [
+  "cnmb.mp3",
+  "冲刺，冲.mp3",
+  "哎你怎么死了.mp3",
+  "哎，猪逼.mp3",
+  "啊啊啊我草你妈呀.mp3",
+  "嘟嘟嘟.mp3",
+  "韭菜盒子.mp3",
+  "哇袄.mp3"
+];
 
 // 状态管理
 const showTooltip = ref(false);
@@ -17,9 +26,15 @@ const currentTooltip = ref("");
 const position = ref({ x: 0, y: 0 });
 
 // 点击事件处理
-const handleClick = () => {
+const handleClick = async () => {
   const randomSound = soundFiles[Math.floor(Math.random() * soundFiles.length)];
-  window.electronAPI?.playSound(randomSound);
+  console.log('尝试播放:', randomSound)
+  
+  try {
+    window.electronAPI?.playSound(randomSound)
+  } catch (err) {
+    console.error('播放失败:', err)
+  }
 
   currentTooltip.value = tooltips[Math.floor(Math.random() * tooltips.length)];
   showTooltip.value = true;
