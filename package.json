@@ -19,19 +19,17 @@
     "url": "https://github.com/Kisechan/Pet/issues"
   },
   "homepage": "https://github.com/Kisechan/Pet#readme",
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^6.0.1",
-    "electron": "^37.2.5",
-    "vue": "^3.5.18",
-    "concurrently": "^8.0.0",
-    "vite": "^5.0.0",
-    "wait-on": "^7.0.0"
-  },
   "dependencies": {
-    "electron": "^37.2.5",
-    "vue": "^3.5.18",
     "fs-extra": "^11.3.1",
     "howler": "^2.2.4",
-    "path": "^0.12.7"
+    "vue": "^3.5.18"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "concurrently": "^9.2.0",
+    "cross-env": "^10.0.0",
+    "electron": "^37.2.6",
+    "vite": "^7.1.1",
+    "wait-on": "^8.0.4"
   }
 }

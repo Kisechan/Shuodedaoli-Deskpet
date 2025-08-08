@@ -18,10 +18,10 @@ ipcMain.on('play-sound', (_, soundFile) => {
 
   // 判断是开发环境还是生产环境
   if (process.env.NODE_ENV === 'development') {
-    // 开发环境下，路径指向 src
-    soundPath = path.join(__dirname, '../renderer/src/assets/sounds', soundFile);
+    // 在开发模式下，直接指向 renderer/public 里的文件
+    soundPath = path.join(__dirname, '../renderer/public/assets/sounds', soundFile);
   } else {
-    // 生产环境下，路径指向打包后的 dist 目录
+    // 在生产模式下，Vite 会把 public 里的文件复制到 dist 文件夹
     soundPath = path.join(__dirname, '../renderer/dist/assets/sounds', soundFile);
   }
 
