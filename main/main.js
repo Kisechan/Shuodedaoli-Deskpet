@@ -14,18 +14,25 @@ function playAudioFile(filePath) {
 }
 
 ipcMain.on('play-sound', (_, soundFile) => {
-  const soundPath = path.join(
-    __dirname, 
-    '../renderer/src/assets/sounds', 
-    soundFile
-  )
-  
-  if (require('fs').existsSync(soundPath)) {
-    playAudioFile(soundPath)
+  let soundPath;
+
+  // 判断是开发环境还是生产环境
+  if (process.env.NODE_ENV === 'development') {
+    // 开发环境下，路径指向 src
+    soundPath = path.join(__dirname, '../renderer/src/assets/sounds', soundFile);
   } else {
-    console.error('音效文件不存在:', soundPath)
+    // 生产环境下，路径指向打包后的 dist 目录
+    soundPath = path.join(__dirname, '../renderer/dist/assets/sounds', soundFile);
   }
-})
+
+  console.log('Main process trying to play sound at path:', soundPath);
+
+  if (require('fs').existsSync(soundPath)) {
+    playAudioFile(soundPath);
+  } else {
+    console.error('Sound file not found:', soundPath);
+  }
+});
 
 let mainWindow;
 
