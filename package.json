@@ -1,8 +1,8 @@
 {
   "name": "pet",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "A cute desktop pet of 'Shuodedaoli' built with Electron and Vue 3.",
+  "main": "main/main.js",
   "scripts": {
     "dev": "concurrently \"cd renderer && npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "cd renderer && npm run build && electron-builder",
