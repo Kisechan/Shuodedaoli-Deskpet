@@ -1,24 +1,62 @@
 {
-  "name": "pet",
-  "version": "1.0.0",
+  "name": "shuodedaoli-deskpet",
+  "version": "0.1.0",
   "description": "A cute desktop pet of 'Shuodedaoli' built with Electron and Vue 3.",
   "main": "main/main.js",
   "scripts": {
     "dev": "concurrently \"cd renderer && npm run dev\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
-    "build": "cd renderer && npm run build && electron-builder",
-    "start": "electron ."
+    "build": "npm run build:renderer && electron-builder",
+    "start": "electron .",
+    "build:renderer": "cd renderer && npm run build",
+    "build:win": "npm run build:renderer && electron-builder --win",
+    "build:linux": "npm run build:renderer && electron-builder --linux",
+    "build:all": "npm run build:renderer && electron-builder --win --linux"
+  },
+  "build": {
+    "appId": "com.kisechan.deskpet",
+    "productName": "说的道理桌面宠物",
+    "copyright": "Copyright © 2025 Kisechan",
+    "directories": {
+      "output": "out"
+    },
+    "files": [
+      "main/",
+      "renderer/dist/",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "build/icon.png"
+    }
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Kisechan/Pet.git"
+    "url": "git+https://github.com/Kisechan/Shuodedaoli-Deskpet.git.git"
   },
-  "keywords": [],
+  "keywords": [
+    "electron",
+    "vue3",
+    "desktop-pet",
+    "desktop-widget",
+    "shuodedaoli",
+    "meme",
+    "fun-project",
+    "opensource"
+  ],
   "author": "Kisechan",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Kisechan/Pet/issues"
+    "url": "https://github.com/Kisechan/Shuodedaoli-Deskpet.git/issues"
   },
-  "homepage": "https://github.com/Kisechan/Pet#readme",
+  "homepage": "https://github.com/Kisechan/Shuodedaoli-Deskpet.git#readme",
   "dependencies": {
     "fs-extra": "^11.3.1",
     "howler": "^2.2.4",
@@ -29,6 +67,7 @@
     "concurrently": "^9.2.0",
     "cross-env": "^10.0.0",
     "electron": "^37.2.6",
+    "electron-builder": "^26.0.12",
     "vite": "^7.1.1",
     "wait-on": "^8.0.4"
   }
