@@ -34,6 +34,24 @@ ipcMain.on('play-sound', (_, soundFile) => {
   }
 });
 
+ipcMain.handle('get-sound-path', (_, soundFile) => {
+  let soundPath;
+
+  if (process.env.NODE_ENV === 'development') {
+    soundPath = path.join(__dirname, '../renderer/public/assets/sounds', soundFile);
+  } else {
+    soundPath = path.join(__dirname, '../renderer/dist/assets/sounds', soundFile);
+  }
+
+  if (require('fs').existsSync(soundPath)) {
+    // 返回一个可供 web 环境使用的 file 协议 URL
+    return `file://${soundPath}`; 
+  } else {
+    console.error('Sound file not found:', soundPath);
+    return null;
+  }
+});
+
 let mainWindow;
 
 function createWindow() {
@@ -46,6 +64,7 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
+      webSecurity: false, // 信任应用，并允许加载本地资源
     },
   });
 

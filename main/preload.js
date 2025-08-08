@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       console.error('播放音效失败:', err)
     }
   },
+  getSoundPath: (soundFile) => ipcRenderer.invoke('get-sound-path', soundFile),
   showTooltip: (text) => ipcRenderer.send('show-tooltip', text),
   onUpdatePosition: (callback) => {
     ipcRenderer.on('update-position', (_, position) => callback(position))

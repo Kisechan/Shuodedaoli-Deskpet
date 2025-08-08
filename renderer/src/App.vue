@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import petGif from "./assets/pet.gif";
+import { Howl } from 'howler';
 
 // 配置数据
 const tooltips = [
@@ -27,13 +28,24 @@ const position = ref({ x: 0, y: 0 });
 
 // 点击事件处理
 const handleClick = async () => {
-  const randomSound = soundFiles[Math.floor(Math.random() * soundFiles.length)];
-  console.log('尝试播放:', randomSound)
+  const randomSoundFile = soundFiles[Math.floor(Math.random() * soundFiles.length)];
+  console.log('请求播放:', randomSoundFile);
   
   try {
-    window.electronAPI?.playSound(randomSound)
+    const audioUrl = await window.electronAPI?.getSoundPath(randomSoundFile);
+
+    if (audioUrl) {
+      const sound = new Howl({
+        src: [audioUrl],
+        format: ['mp3']
+      });
+      sound.play();
+    } else {
+      console.error('无法获取音频路径:', randomSoundFile);
+    }
+    
   } catch (err) {
-    console.error('播放失败:', err)
+    console.error('播放失败:', err);
   }
 
   currentTooltip.value = tooltips[Math.floor(Math.random() * tooltips.length)];
