@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref } from "vue";
 import petGif from "./assets/pet.gif";
-import { Howl } from 'howler';
+import { Howl } from "howler";
 
 // 配置数据
 const tooltips = [
@@ -18,72 +18,67 @@ const soundFiles = [
   "啊啊啊我草你妈呀.mp3",
   "嘟嘟嘟.mp3",
   "韭菜盒子.mp3",
-  "哇袄.mp3"
+  "哇袄.mp3",
 ];
 
 // 状态管理
 const showTooltip = ref(false);
 const currentTooltip = ref("");
-const position = ref({ x: 0, y: 0 });
 
 // 点击事件处理
 const handleClick = async () => {
-  const randomSoundFile = soundFiles[Math.floor(Math.random() * soundFiles.length)];
-  console.log('请求播放:', randomSoundFile);
-  
+  const randomSoundFile =
+    soundFiles[Math.floor(Math.random() * soundFiles.length)];
+  console.log("请求播放:", randomSoundFile);
+
   try {
     const audioUrl = await window.electronAPI?.getSoundPath(randomSoundFile);
 
     if (audioUrl) {
       const sound = new Howl({
         src: [audioUrl],
-        format: ['mp3']
+        format: ["mp3"],
       });
       sound.play();
     } else {
-      console.error('无法获取音频路径:', randomSoundFile);
+      console.error("无法获取音频路径:", randomSoundFile);
     }
-    
   } catch (err) {
-    console.error('播放失败:', err);
+    console.error("播放失败:", err);
   }
 
   currentTooltip.value = tooltips[Math.floor(Math.random() * tooltips.length)];
   showTooltip.value = true;
   setTimeout(() => (showTooltip.value = false), 2000);
 };
-
-// 初始化位置监听
-onMounted(() => {
-  if (window.electronAPI) {
-    window.electronAPI.onUpdatePosition((pos) => {
-      position.value = pos;
-    });
-  }
-});
 </script>
 
 <template>
-  <div
-    class="pet-container"
-    :style="{ left: `${position.x}px`, top: `${position.y}px` }"
-  >
-    <img :src="petGif" class="pet-gif" @click="handleClick" draggable="false" />
-
+  <div class="pet-container">
     <transition name="fade">
       <div v-if="showTooltip" class="tooltip">
         {{ currentTooltip }}
       </div>
     </transition>
+    <img :src="petGif" class="pet-gif" @click="handleClick" />
   </div>
 </template>
 
+<style>
+html, body, #app {
+  background-color: transparent !important;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* 隐藏滚动条 */
+}
+</style>
+
 <style scoped>
 .pet-container {
-  position: absolute;
   width: 300px;
   height: 300px;
-  -webkit-app-region: no-drag;
+  /* 将整个容器设置为可拖拽区域 */
+  -webkit-app-region: drag;
 }
 
 .pet-gif {
@@ -91,7 +86,8 @@ onMounted(() => {
   height: 100%;
   cursor: pointer;
   user-select: none;
-  -webkit-user-drag: none;
+  /* 设置图片为不可拖拽，以便响应点击事件 */
+  -webkit-app-region: no-drag;
 }
 
 .tooltip {
@@ -105,6 +101,8 @@ onMounted(() => {
   border-radius: 20px;
   font-size: 14px;
   white-space: nowrap;
+  /* 确保提示框不会干扰拖拽 */
+  -webkit-app-region: no-drag;
 }
 
 .fade-enter-active,
