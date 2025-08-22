@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
   getSoundPath: (soundFile) => ipcRenderer.invoke('get-sound-path', soundFile),
+  getSoundFiles: () => ipcRenderer.invoke('get-sound-files'),
   showTooltip: (text) => ipcRenderer.send('show-tooltip', text),
   onUpdatePosition: (callback) => {
     ipcRenderer.on('update-position', (_, position) => callback(position))

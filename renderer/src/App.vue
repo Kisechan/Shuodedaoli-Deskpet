@@ -1,34 +1,44 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import petGif from "./assets/pet.gif";
 import { Howl } from "howler";
 
-// 配置数据
-const tooltips = [
-  "说的道理~",
-  "尊尼获加",
-  "为什么不开大！！",
-  "（凤鸣）",
-];
-const soundFiles = [
-  "cnmb.mp3",
-  "冲刺，冲.mp3",
-  "哎你怎么死了.mp3",
-  "哎，猪逼.mp3",
-  "啊啊啊我草你妈呀.mp3",
-  "嘟嘟嘟.mp3",
-  "韭菜盒子.mp3",
-  "哇袄.mp3",
-];
-
 // 状态管理
+const soundFiles = ref([]);   // 存储从主进程获取的声音文件名列表
 const showTooltip = ref(false);
 const currentTooltip = ref("");
+const isLoading = ref(true);  // 跟踪文件列表是否已加载
+
+// 在组件挂载后，从主进程获取声音文件列表
+onMounted(async () => {
+  if (window.electronAPI && typeof window.electronAPI.getSoundFiles === 'function') {
+    try {
+      const files = await window.electronAPI.getSoundFiles();
+      soundFiles.value = files;
+      console.log("成功加载声音文件:", files);
+    } catch (error) {
+      console.error("获取声音文件列表失败:", error);
+    } finally {
+      isLoading.value = false;
+    }
+  } else {
+    console.error("electronAPI.getSoundFiles 函数不存在。");
+    isLoading.value = false;
+  }
+});
+
 
 // 点击事件处理
 const handleClick = async () => {
+  // 如果正在加载或没有声音文件，则不执行任何操作
+  if (isLoading.value || soundFiles.value.length === 0) {
+    console.warn("声音文件尚未加载或列表为空。");
+    return;
+  }
+
+  // 从文件列表中随机选择一个文件
   const randomSoundFile =
-    soundFiles[Math.floor(Math.random() * soundFiles.length)];
+    soundFiles.value[Math.floor(Math.random() * soundFiles.value.length)];
   console.log("请求播放:", randomSoundFile);
 
   try {
@@ -47,7 +57,8 @@ const handleClick = async () => {
     console.error("播放失败:", err);
   }
 
-  currentTooltip.value = tooltips[Math.floor(Math.random() * tooltips.length)];
+  // 将提示文案设置为文件名
+  currentTooltip.value = randomSoundFile.replace(/\.mp3$/, '');
   showTooltip.value = true;
   setTimeout(() => (showTooltip.value = false), 2000);
 };

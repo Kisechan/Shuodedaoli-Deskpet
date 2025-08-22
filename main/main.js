@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const { spawn } = require('child_process')
+const fs = require("fs");
 
 // 音效播放器
 function playAudioFile(filePath) {
@@ -49,6 +50,22 @@ ipcMain.handle('get-sound-path', (_, soundFile) => {
   } else {
     console.error('Sound file not found:', soundPath);
     return null;
+  }
+});
+
+ipcMain.handle('get-sound-files', async () => {
+  const soundDir = process.env.NODE_ENV === 'development'
+    ? path.join(__dirname, '../renderer/public/assets/sounds')
+    : path.join(__dirname, '../renderer/dist/assets/sounds');
+
+  try {
+    // 读取目录下的所有文件名
+    const files = await fs.promises.readdir(soundDir);
+    // 筛选出 .mp3 文件并返回
+    return files.filter(file => file.endsWith('.mp3'));
+  } catch (error) {
+    console.error('无法读取声音目录:', error);
+    return []; // 如果出错则返回空数组
   }
 });
 
