@@ -13,5 +13,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showTooltip: (text) => ipcRenderer.send('show-tooltip', text),
   onUpdatePosition: (callback) => {
     ipcRenderer.on('update-position', (_, position) => callback(position))
-  }
+  },
+  moveWindow: (position) => ipcRenderer.send('move-window', position)
 })

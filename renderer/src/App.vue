@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, reactive } from "vue";
 import petGif from "./assets/pet.gif";
 import { Howl } from "howler";
 
@@ -13,97 +13,123 @@ const isLoading = ref(true);  // 跟踪文件列表是否已加载
 onMounted(async () => {
   if (window.electronAPI && typeof window.electronAPI.getSoundFiles === 'function') {
     try {
-      const files = await window.electronAPI.getSoundFiles();
-      soundFiles.value = files;
-      console.log("成功加载声音文件:", files);
+      soundFiles.value = await window.electronAPI.getSoundFiles();
     } catch (error) {
       console.error("获取声音文件列表失败:", error);
     } finally {
       isLoading.value = false;
     }
-  } else {
-    console.error("electronAPI.getSoundFiles 函数不存在。");
-    isLoading.value = false;
   }
 });
 
-
-// 点击事件处理
-const handleClick = async () => {
-  // 如果正在加载或没有声音文件，则不执行任何操作
-  if (isLoading.value || soundFiles.value.length === 0) {
-    console.warn("声音文件尚未加载或列表为空。");
-    return;
-  }
-
-  // 从文件列表中随机选择一个文件
-  const randomSoundFile =
-    soundFiles.value[Math.floor(Math.random() * soundFiles.value.length)];
-  console.log("请求播放:", randomSoundFile);
-
+const playRandomSound = async () => {
+  if (isLoading.value || soundFiles.value.length === 0) return;
+  const randomSoundFile = soundFiles.value[Math.floor(Math.random() * soundFiles.value.length)];
   try {
-    const audioUrl = await window.electronAPI?.getSoundPath(randomSoundFile);
-
-    if (audioUrl) {
-      const sound = new Howl({
-        src: [audioUrl],
-        format: ["mp3"],
-      });
-      sound.play();
-    } else {
-      console.error("无法获取音频路径:", randomSoundFile);
-    }
+    const audioUrl = await window.electronAPI.getSoundPath(randomSoundFile);
+    if (audioUrl) new Howl({ src: [audioUrl], format: ["mp3"] }).play();
   } catch (err) {
     console.error("播放失败:", err);
   }
-
-  // 将提示文案设置为文件名
   currentTooltip.value = randomSoundFile.replace(/\.mp3$/, '');
   showTooltip.value = true;
   setTimeout(() => (showTooltip.value = false), 2000);
 };
+
+// 新的拖拽与点击处理逻辑
+const dragState = reactive({
+  isDragging: false,    // 是否正在拖动
+  hasMoved: false,      // 本次拖动是否真的移动了
+  startX: 0,            // 鼠标按下的起始 X 坐标
+  startY: 0,            // 鼠标按下的起始 Y 坐标
+});
+
+// 鼠标按下事件
+function handleMouseDown(event) {
+  dragState.isDragging = true;
+  dragState.hasMoved = false; // 重置移动状态
+  dragState.startX = event.screenX;
+  dragState.startY = event.screenY;
+  
+  // 添加全局监听器
+  window.addEventListener('mousemove', handleMouseMove);
+  window.addEventListener('mouseup', handleMouseUp);
+}
+
+// 鼠标移动事件
+function handleMouseMove(event) {
+  if (!dragState.isDragging) return;
+
+  const deltaX = event.screenX - dragState.startX;
+  const deltaY = event.screenY - dragState.startY;
+
+  // 如果移动超过一个小阈值（例如5像素），我们才认为这是一次“拖动”
+  if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+    dragState.hasMoved = true;
+  }
+  
+  // 实时通知主进程移动窗口
+  window.electronAPI.moveWindow({ x: event.screenX, y: event.screenY });
+}
+
+// 鼠标抬起事件
+function handleMouseUp() {
+  // 如果鼠标按下后没有真正移动过，就认为这是一次点击
+  if (dragState.isDragging && !dragState.hasMoved) {
+    playRandomSound();
+  }
+
+  // 状态重置
+  dragState.isDragging = false;
+  
+  // 移除全局监听器(非常重要)
+  window.removeEventListener('mousemove', handleMouseMove);
+  window.removeEventListener('mouseup', handleMouseUp);
+}
 </script>
 
 <template>
-  <div class="pet-container">
+  <div class="pet-container" @mousedown="handleMouseDown">
     <transition name="fade">
       <div v-if="showTooltip" class="tooltip">
         {{ currentTooltip }}
       </div>
     </transition>
-    <img :src="petGif" class="pet-gif" @click="handleClick" />
+    <img :src="petGif" class="pet-gif" />
   </div>
 </template>
 
 <style>
+/* 全局样式保持不变 */
 html, body, #app {
   background-color: transparent !important;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* 隐藏滚动条 */
+  overflow: hidden;
 }
 </style>
 
 <style scoped>
+/* 样式大大简化 */
 .pet-container {
-  width: 300px;
-  height: 300px;
-  /* 将整个容器设置为可拖拽区域 */
-  -webkit-app-region: drag;
+  width: 200px;
+  height: 200px;
+  position: relative;
+  cursor: pointer;
+  user-select: none; /* 防止拖动时选中文本 */
 }
 
 .pet-gif {
   width: 100%;
   height: 100%;
-  cursor: pointer;
-  user-select: none;
-  /* 设置图片为不可拖拽，以便响应点击事件 */
-  -webkit-app-region: no-drag;
+  display: block;
+  /* 图片现在不接收任何鼠标事件，所有事件都由父容器处理 */
+  pointer-events: none; 
 }
 
 .tooltip {
   position: absolute;
-  bottom: -40px;
+  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(0, 0, 0, 0.7);
@@ -112,16 +138,13 @@ html, body, #app {
   border-radius: 20px;
   font-size: 14px;
   white-space: nowrap;
-  /* 确保提示框不会干扰拖拽 */
-  -webkit-app-region: no-drag;
+  pointer-events: none; /* 提示框也不响应鼠标 */
 }
 
-.fade-enter-active,
-.fade-leave-active {
+.fade-enter-active, .fade-leave-active {
   transition: opacity 0.3s;
 }
-.fade-enter-from,
-.fade-leave-to {
+.fade-enter-from, .fade-leave-to {
   opacity: 0;
 }
 </style>

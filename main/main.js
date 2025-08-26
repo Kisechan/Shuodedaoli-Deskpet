@@ -73,8 +73,8 @@ let mainWindow;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 300,
-    height: 300,
+    width: 200,
+    height: 200,
     transparent: true, // 开启透明窗口
     frame: false,      // 无边框窗口
     resizable: false,  // 禁止调整大小
@@ -83,6 +83,11 @@ function createWindow() {
       contextIsolation: true,
       webSecurity: false,
     },
+  });
+
+  // 当渲染进程传来这个事件时，就移动窗口
+  ipcMain.on('move-window', (event, { x, y }) => {
+    mainWindow.setPosition(x, y, true); // true 表示动画平滑移动
   });
 
   if (process.env.NODE_ENV === "development") {
