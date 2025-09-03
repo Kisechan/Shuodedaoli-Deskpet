@@ -24,14 +24,14 @@ ipcMain.on("play-sound", (_, soundFile) => {
     // 在开发模式下，直接指向 renderer/public 里的文件
     soundPath = path.join(
       __dirname,
-      "../renderer/public/assets/sounds",
+      "../renderer/public/sounds",
       soundFile
     );
   } else {
     // 在生产模式下，Vite 会把 public 里的文件复制到 dist 文件夹
     soundPath = path.join(
       __dirname,
-      "../renderer/dist/assets/sounds",
+      "../renderer/dist/sounds",
       soundFile
     );
   }
@@ -51,13 +51,13 @@ ipcMain.handle("get-sound-path", (_, soundFile) => {
   if (process.env.NODE_ENV === "development") {
     soundPath = path.join(
       __dirname,
-      "../renderer/public/assets/sounds",
+      "../renderer/public/sounds",
       soundFile
     );
   } else {
     soundPath = path.join(
       __dirname,
-      "../renderer/dist/assets/sounds",
+      "../renderer/dist/sounds",
       soundFile
     );
   }
@@ -74,8 +74,8 @@ ipcMain.handle("get-sound-path", (_, soundFile) => {
 ipcMain.handle("get-sound-files", async () => {
   const soundDir =
     process.env.NODE_ENV === "development"
-      ? path.join(__dirname, "../renderer/public/assets/sounds")
-      : path.join(__dirname, "../renderer/dist/assets/sounds");
+      ? path.join(__dirname, "../renderer/public/sounds")
+      : path.join(__dirname, "../renderer/dist/sounds");
 
   try {
     // 读取目录下的所有文件名
