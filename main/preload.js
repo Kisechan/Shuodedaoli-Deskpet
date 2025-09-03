@@ -16,5 +16,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   moveWindow: (position) => ipcRenderer.send('move-window', position),
   // 暴露获取窗口位置的函数
-  getWindowPosition: () => ipcRenderer.invoke('get-window-position')
+  getWindowPosition: () => ipcRenderer.invoke('get-window-position'),
+  showContextMenu: () => ipcRenderer.send('show-context-menu')
 })

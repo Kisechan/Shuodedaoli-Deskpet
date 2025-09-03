@@ -8,6 +8,7 @@ const soundFiles = ref([]);   // 存储从主进程获取的声音文件名列�
 const showTooltip = ref(false);
 const currentTooltip = ref("");
 const isLoading = ref(true);  // 跟踪文件列表是否已加载
+const isPlaying = ref(false); // 是否正在播放音效，用作锁
 
 // 在组件挂载后，从主进程获取声音文件列表
 onMounted(async () => {
@@ -23,17 +24,39 @@ onMounted(async () => {
 });
 
 const playRandomSound = async () => {
+  if (isPlaying.value) return;
   if (isLoading.value || soundFiles.value.length === 0) return;
   const randomSoundFile = soundFiles.value[Math.floor(Math.random() * soundFiles.value.length)];
+  isPlaying.value = true; // 加锁
   try {
     const audioUrl = await window.electronAPI.getSoundPath(randomSoundFile);
-    if (audioUrl) new Howl({ src: [audioUrl], format: ["mp3"] }).play();
+    if (audioUrl) {
+      new Howl({
+        src: [audioUrl],
+        format: ["mp3"],
+        // 当音频播放结束时
+        onend: function() {
+          // 隐藏提示框
+          showTooltip.value = false;
+          // 解锁，允许下一次点击
+          isPlaying.value = false;
+        }
+      }).play();
+    } else {
+        // 如果音频路径获取失败，也要解锁
+        isPlaying.value = false;
+    }
   } catch (err) {
+    // 如果播放过程出错，也要解锁
+    isPlaying.value = false;
     console.error("播放失败:", err);
   }
-  currentTooltip.value = randomSoundFile.replace(/\.mp3$/, '');
+  if (randomSoundFile === "哇袄.mp3") {
+    currentTooltip.value = "哇袄！！！";
+  } else {
+    currentTooltip.value = randomSoundFile.replace(/\.mp3$/, '');
+  }
   showTooltip.value = true;
-  setTimeout(() => (showTooltip.value = false), 2000);
 };
 
 const dragState = reactive({
@@ -48,6 +71,10 @@ const dragState = reactive({
 
 // 鼠标按下事件 (改为异步函数)
 async function handleMouseDown(event) {
+  // 如果按下的不是鼠标左键，则不执行任何操作
+  if (event.button !== 0) {
+    return;
+  }
   // 在拖动开始时，先获取窗口的当前位置
   const { x, y } = await window.electronAPI.getWindowPosition();
   dragState.windowStartX = x;
@@ -98,10 +125,18 @@ function handleMouseUp() {
   window.removeEventListener('mousemove', handleMouseMove);
   window.removeEventListener('mouseup', handleMouseUp);
 }
+
+function handleRightClick() {
+  window.electronAPI.showContextMenu();
+}
 </script>
 
 <template>
-  <div class="pet-container" @mousedown="handleMouseDown">
+  <div 
+    class="pet-container" 
+    @mousedown="handleMouseDown"
+    @contextmenu.prevent="handleRightClick"
+  >
     <transition name="fade">
       <div v-if="showTooltip" class="tooltip">
         {{ currentTooltip }}
