@@ -36,22 +36,30 @@ const playRandomSound = async () => {
   setTimeout(() => (showTooltip.value = false), 2000);
 };
 
-// 新的拖拽与点击处理逻辑
 const dragState = reactive({
-  isDragging: false,    // 是否正在拖动
-  hasMoved: false,      // 本次拖动是否真的移动了
-  startX: 0,            // 鼠标按下的起始 X 坐标
-  startY: 0,            // 鼠标按下的起始 Y 坐标
+  isDragging: false,
+  hasMoved: false,
+  // 分别记录鼠标和窗口的起始位置
+  mouseStartX: 0,
+  mouseStartY: 0,
+  windowStartX: 0,
+  windowStartY: 0,
 });
 
-// 鼠标按下事件
-function handleMouseDown(event) {
-  dragState.isDragging = true;
-  dragState.hasMoved = false; // 重置移动状态
-  dragState.startX = event.screenX;
-  dragState.startY = event.screenY;
+// 鼠标按下事件 (改为异步函数)
+async function handleMouseDown(event) {
+  // 在拖动开始时，先获取窗口的当前位置
+  const { x, y } = await window.electronAPI.getWindowPosition();
+  dragState.windowStartX = x;
+  dragState.windowStartY = y;
+
+  // 记录鼠标的初始位置
+  dragState.mouseStartX = event.screenX;
+  dragState.mouseStartY = event.screenY;
   
-  // 添加全局监听器
+  dragState.isDragging = true;
+  dragState.hasMoved = false;
+  
   window.addEventListener('mousemove', handleMouseMove);
   window.addEventListener('mouseup', handleMouseUp);
 }
@@ -60,16 +68,20 @@ function handleMouseDown(event) {
 function handleMouseMove(event) {
   if (!dragState.isDragging) return;
 
-  const deltaX = event.screenX - dragState.startX;
-  const deltaY = event.screenY - dragState.startY;
+  // 计算鼠标从起点移动的距离（偏移量）
+  const deltaX = event.screenX - dragState.mouseStartX;
+  const deltaY = event.screenY - dragState.mouseStartY;
 
-  // 如果移动超过一个小阈值（例如5像素），我们才认为这是一次“拖动”
-  if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+  if (!dragState.hasMoved && (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5)) {
     dragState.hasMoved = true;
   }
   
-  // 实时通知主进程移动窗口
-  window.electronAPI.moveWindow({ x: event.screenX, y: event.screenY });
+  // 计算窗口的新位置 = 窗口初始位置 + 鼠标偏移量
+  const newWindowX = dragState.windowStartX + deltaX;
+  const newWindowY = dragState.windowStartY + deltaY;
+
+  // 将计算出的正确位置发送给主进程
+  window.electronAPI.moveWindow({ x: newWindowX, y: newWindowY });
 }
 
 // 鼠标抬起事件

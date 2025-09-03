@@ -14,5 +14,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onUpdatePosition: (callback) => {
     ipcRenderer.on('update-position', (_, position) => callback(position))
   },
-  moveWindow: (position) => ipcRenderer.send('move-window', position)
+  moveWindow: (position) => ipcRenderer.send('move-window', position),
+  // 暴露获取窗口位置的函数
+  getWindowPosition: () => ipcRenderer.invoke('get-window-position')
 })

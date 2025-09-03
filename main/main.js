@@ -87,7 +87,17 @@ function createWindow() {
 
   // 当渲染进程传来这个事件时，就移动窗口
   ipcMain.on('move-window', (event, { x, y }) => {
-    mainWindow.setPosition(x, y, true); // true 表示动画平滑移动
+    // 使用 Math.round 避免非整数坐标可能带来的问题
+    mainWindow.setPosition(Math.round(x), Math.round(y), false); 
+  });
+
+  // 添加一个 handle，用于响应前端获取窗口位置的请求
+  ipcMain.handle('get-window-position', () => {
+    if (mainWindow) {
+      const [x, y] = mainWindow.getPosition();
+      return { x, y };
+    }
+    return { x: 0, y: 0 };
   });
 
   if (process.env.NODE_ENV === "development") {
