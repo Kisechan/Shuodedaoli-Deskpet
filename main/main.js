@@ -3,6 +3,8 @@ const path = require("path");
 const { spawn } = require('child_process')
 const fs = require("fs");
 
+app.disableHardwareAcceleration(); // 高 DPI 缩放修复
+
 // 音效播放器
 function playAudioFile(filePath) {
   if (process.platform === 'win32') {
@@ -78,6 +80,8 @@ function createWindow() {
     transparent: true, // 开启透明窗口
     frame: false,      // 无边框窗口
     resizable: false,  // 禁止调整大小
+    title: "说的道理桌宠",
+    icon: path.join(__dirname, '../build/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

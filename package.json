@@ -1,6 +1,6 @@
 {
   "name": "shuodedaoli-deskpet",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A cute desktop pet of 'Shuodedaoli' built with Electron and Vue 3.",
   "main": "main/main.js",
   "scripts": {
@@ -15,15 +15,32 @@
   "build": {
     "appId": "com.kisechan.deskpet",
     "productName": "说的道理桌面宠物",
+    "compression": "maximum",
     "copyright": "Copyright © 2025 Kisechan",
     "directories": {
       "output": "out"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "allowElevation": false,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "installerLanguages": ["zh_CN", "en_US"],
+      "language": "2052"
     },
     "files": [
       "main/",
       "renderer/dist/",
       "package.json"
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "Kisechan",
+      "repo": "Shuodedaoli-Deskpet"
+    },
     "win": {
       "target": "nsis",
       "icon": "build/icon.png"
