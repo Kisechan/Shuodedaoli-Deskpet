@@ -7,7 +7,7 @@
 [![Static Badge](https://img.shields.io/badge/Vite-%23646CFF?style=flat-square&logo=vite&logoColor=white)](https://cn.vite.dev/)
 [![Static Badge](https://img.shields.io/badge/Electron-%2347848F?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/zh/)
 
-一只非常非常可爱的“说的道理”桌宠（可鬼叫）。
+一只非常非常可爱的**说的道理**桌宠（可鬼叫）。
 
 仅供娱乐。
 
@@ -29,6 +29,10 @@ git clone https://github.com/Kisechan/Shuodedaoli-Deskpet.git
 
 ```bash
 npm install
+cd renderer
+npm install
+
+# 本项目的主进程和渲染进程是分离的，需要分别下载环境
 ```
 
 3. **运行项目**
@@ -47,6 +51,6 @@ npm run start
 
 ## TODO
 
-- [ ] 更美观的说的道理，优化 UI
+- [x] 更美观的说的道理，优化 UI
 - [ ] 更多的哇袄
 - [ ] 自定义更换不同的道理
