@@ -1,133 +1,185 @@
 <script setup>
-import { ref, onMounted, reactive } from "vue";
-import petGif from "./assets/pet.gif";
+import { ref, onMounted, reactive, computed } from "vue";
 import { Howl } from "howler";
 
-// 状态管理
-const soundFiles = ref([]);   // 存储从主进程获取的声音文件名列表
+// 默认图片（打包时位于 assets）
+import defaultPet from "./assets/普通型道理.gif";
+
+// 列出 renderer/src/assets 下的图片资源（Vite 特性）
+// 只匹配常见的图片后缀
+const modules = import.meta.glob('./assets/*.{png,jpg,jpeg,gif}', { as: 'url' });
+const assetEntries = Object.entries(modules);
+
+// 状态
+const soundFiles = ref([]);
 const showTooltip = ref(false);
 const currentTooltip = ref("");
-const isLoading = ref(true);  // 跟踪文件列表是否已加载
-const isPlaying = ref(false); // 是否正在播放音效，用作锁
+const isLoading = ref(true);
+const isPlaying = ref(false);
 
-// 在组件挂载后，从主进程获取声音文件列表
+// 处理宠物素材选择
+const assetList = assetEntries.map(([path, resolver]) => ({ path, resolver }));
+const assetPreviews = ref([]); // { path, url }
+const selectedAsset = ref(null); // 将保存为 URL
+const showSettings = ref(false);
+
+const selectedAssetName = computed(() => {
+  if (!selectedAsset.value) return null;
+  // 从路径中取文件名
+  const parts = selectedAsset.value.split('/');
+  return parts[parts.length - 1];
+});
+
+async function loadSavedSelection() {
+  // 优先从主进程读取持久化选择
+  if (window.electronAPI && typeof window.electronAPI.getPetSelection === 'function') {
+    try {
+      const assetPath = await window.electronAPI.getPetSelection();
+      if (assetPath) {
+        // assetPath 存储为相对于 assets 的文件名，例如 "pet2.gif"
+        const match = assetList.find(a => a.path.endsWith('/' + assetPath));
+        if (match) {
+          selectedAsset.value = await match.resolver();
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('读取保存的宠物素材失败:', e);
+    }
+  }
+  // fallback: localStorage
+  const ls = localStorage.getItem('petAsset');
+  if (ls) {
+    const match = assetList.find(a => a.path.endsWith('/' + ls));
+    if (match) selectedAsset.value = await match.resolver();
+  }
+}
+
+async function saveSelection(assetPath) {
+  const fileName = assetPath.replace(/^.*\//, '');
+  // 保存到主进程
+  if (window.electronAPI && typeof window.electronAPI.setPetSelection === 'function') {
+    try {
+      await window.electronAPI.setPetSelection(fileName);
+    } catch (e) {
+      console.error('保存宠物素材失败:', e);
+    }
+  }
+  // fallback: localStorage
+  try { localStorage.setItem('petAsset', fileName); } catch (_) {}
+}
+
+// 初始化
 onMounted(async () => {
+  // 加载声音文件列表
   if (window.electronAPI && typeof window.electronAPI.getSoundFiles === 'function') {
     try {
       soundFiles.value = await window.electronAPI.getSoundFiles();
-    } catch (error) {
-      console.error("获取声音文件列表失败:", error);
+    } catch (err) {
+      console.error("获取声音文件列表失败:", err);
     } finally {
       isLoading.value = false;
     }
   }
+  await loadSavedSelection();
+  // 预解析所有资源的 URL，用于设置面板的缩略图显示
+  try {
+    const previews = await Promise.all(assetList.map(async (a) => ({ path: a.path, url: await a.resolver() })));
+    assetPreviews.value = previews;
+  } catch (e) {
+    console.error('解析素材预览失败:', e);
+  }
+
+  // 监听主进程通过右键菜单发来的选择变更
+  if (window.electronAPI && typeof window.electronAPI.onPetSelectionChanged === 'function') {
+    window.electronAPI.onPetSelectionChanged(async (fileName) => {
+      const match = assetPreviews.value.find(p => p.path.endsWith('/' + fileName));
+      if (match) selectedAsset.value = match.url;
+    });
+  }
 });
+
+const petGifUrl = computed(() => selectedAsset.value || defaultPet);
 
 const playRandomSound = async () => {
   if (isPlaying.value) return;
   if (isLoading.value || soundFiles.value.length === 0) return;
   const randomSoundFile = soundFiles.value[Math.floor(Math.random() * soundFiles.value.length)];
-  isPlaying.value = true; // 加锁
+  isPlaying.value = true;
   try {
     const audioUrl = await window.electronAPI.getSoundPath(randomSoundFile);
     if (audioUrl) {
       new Howl({
         src: [audioUrl],
         format: ["mp3"],
-        // 当音频播放结束时
         onend: function() {
-          // 隐藏提示框
           showTooltip.value = false;
-          // 解锁，允许下一次点击
           isPlaying.value = false;
         }
       }).play();
     } else {
-        // 如果音频路径获取失败，也要解锁
-        isPlaying.value = false;
+      isPlaying.value = false;
     }
   } catch (err) {
-    // 如果播放过程出错，也要解锁
     isPlaying.value = false;
     console.error("播放失败:", err);
   }
-  if (randomSoundFile === "哇袄.mp3") {
-    currentTooltip.value = "哇袄！！！";
-  } else {
-    currentTooltip.value = randomSoundFile.replace(/\.mp3$/, '');
-  }
+  currentTooltip.value = randomSoundFile.replace(/\.mp3$/, '');
   showTooltip.value = true;
 };
 
 const dragState = reactive({
   isDragging: false,
   hasMoved: false,
-  // 分别记录鼠标和窗口的起始位置
   mouseStartX: 0,
   mouseStartY: 0,
   windowStartX: 0,
   windowStartY: 0,
 });
 
-// 鼠标按下事件 (改为异步函数)
 async function handleMouseDown(event) {
-  // 如果按下的不是鼠标左键，则不执行任何操作
-  if (event.button !== 0) {
-    return;
-  }
-  // 在拖动开始时，先获取窗口的当前位置
+  if (event.button !== 0) return;
   const { x, y } = await window.electronAPI.getWindowPosition();
   dragState.windowStartX = x;
   dragState.windowStartY = y;
-
-  // 记录鼠标的初始位置
   dragState.mouseStartX = event.screenX;
   dragState.mouseStartY = event.screenY;
-  
   dragState.isDragging = true;
   dragState.hasMoved = false;
-  
   window.addEventListener('mousemove', handleMouseMove);
   window.addEventListener('mouseup', handleMouseUp);
 }
 
-// 鼠标移动事件
 function handleMouseMove(event) {
   if (!dragState.isDragging) return;
-
-  // 计算鼠标从起点移动的距离（偏移量）
   const deltaX = event.screenX - dragState.mouseStartX;
   const deltaY = event.screenY - dragState.mouseStartY;
-
-  if (!dragState.hasMoved && (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5)) {
-    dragState.hasMoved = true;
-  }
-  
-  // 计算窗口的新位置 = 窗口初始位置 + 鼠标偏移量
+  if (!dragState.hasMoved && (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5)) dragState.hasMoved = true;
   const newWindowX = dragState.windowStartX + deltaX;
   const newWindowY = dragState.windowStartY + deltaY;
-
-  // 将计算出的正确位置发送给主进程
   window.electronAPI.moveWindow({ x: newWindowX, y: newWindowY });
 }
 
-// 鼠标抬起事件
 function handleMouseUp() {
-  // 如果鼠标按下后没有真正移动过，就认为这是一次点击
-  if (dragState.isDragging && !dragState.hasMoved) {
-    playRandomSound();
-  }
-
-  // 状态重置
+  if (dragState.isDragging && !dragState.hasMoved) playRandomSound();
   dragState.isDragging = false;
-  
-  // 移除全局监听器(非常重要)
   window.removeEventListener('mousemove', handleMouseMove);
   window.removeEventListener('mouseup', handleMouseUp);
 }
 
-function handleRightClick() {
-  window.electronAPI.showContextMenu();
+function handleRightClick() { window.electronAPI.showContextMenu(); }
+
+async function chooseAsset(entry) {
+  // entry can be either {path, resolver} or a preview {path, url}
+  if (entry.url) {
+    selectedAsset.value = entry.url;
+    await saveSelection(entry.path);
+  } else {
+    const url = await entry.resolver();
+    selectedAsset.value = url;
+    await saveSelection(entry.path);
+  }
+  showSettings.value = false;
 }
 </script>
 
@@ -142,7 +194,7 @@ function handleRightClick() {
         {{ currentTooltip }}
       </div>
     </transition>
-    <img :src="petGif" class="pet-gif" />
+    <img :src="petGifUrl" class="pet-gif" />
   </div>
 </template>
 

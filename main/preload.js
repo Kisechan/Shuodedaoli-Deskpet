@@ -10,6 +10,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   getSoundPath: (soundFile) => ipcRenderer.invoke('get-sound-path', soundFile),
   getSoundFiles: () => ipcRenderer.invoke('get-sound-files'),
+  getPetSelection: () => ipcRenderer.invoke('get-pet-selection'),
+  setPetSelection: (petAsset) => ipcRenderer.invoke('set-pet-selection', petAsset),
+  onPetSelectionChanged: (callback) => {
+    ipcRenderer.on('pet-selection-changed', (_, fileName) => callback(fileName));
+  },
   showTooltip: (text) => ipcRenderer.send('show-tooltip', text),
   onUpdatePosition: (callback) => {
     ipcRenderer.on('update-position', (_, position) => callback(position))

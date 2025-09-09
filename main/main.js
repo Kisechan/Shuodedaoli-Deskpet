@@ -88,27 +88,128 @@ ipcMain.handle("get-sound-files", async () => {
   }
 });
 
-ipcMain.on("show-context-menu", () => {
+// 持久化用户设置 (用于保存所选宠物素材文件名)
+const settingsFile = path.join(app.getPath('userData') || __dirname, 'settings.json');
+
+ipcMain.handle('get-pet-selection', async () => {
+  try {
+    if (fs.existsSync(settingsFile)) {
+      const data = JSON.parse(await fs.promises.readFile(settingsFile, 'utf8'));
+      return data.petAsset || null;
+    }
+  } catch (err) {
+    console.error('读取设置失败:', err);
+  }
+  return null;
+});
+
+ipcMain.handle('set-pet-selection', async (_, petAsset) => {
+  try {
+    let data = {};
+    if (fs.existsSync(settingsFile)) {
+      try {
+        data = JSON.parse(await fs.promises.readFile(settingsFile, 'utf8')) || {};
+      } catch (e) {
+        data = {};
+      }
+    }
+    data.petAsset = petAsset;
+    await fs.promises.writeFile(settingsFile, JSON.stringify(data, null, 2), 'utf8');
+    return true;
+  } catch (err) {
+    console.error('写入设置失败:', err);
+    return false;
+  }
+});
+
+ipcMain.on("show-context-menu", async () => {
+  // 尝试动态读取 renderer 下的 assets 目录，开发/生产路径均尝试
+  const devAssets = path.join(__dirname, "../renderer/src/assets");
+  const prodAssets = path.join(__dirname, "../renderer/dist/assets");
+  let assetsDir = null;
+  if (fs.existsSync(devAssets)) assetsDir = devAssets;
+  else if (fs.existsSync(prodAssets)) assetsDir = prodAssets;
+
+  // 读取当前保存的选择（文件名）
+  let currentSelection = null;
+  try {
+    if (fs.existsSync(settingsFile)) {
+      const data = JSON.parse(await fs.promises.readFile(settingsFile, 'utf8')) || {};
+      currentSelection = data.petAsset || null;
+    }
+  } catch (e) {
+    console.error('读取当前选择失败:', e);
+  }
+
+  // 构建素材菜单项，如果无法读取目录，则提供一个默认值
+  let assetItems = [];
+  try {
+    if (assetsDir) {
+      const files = await fs.promises.readdir(assetsDir);
+      const imgs = files.filter(f => /\.(png|jpg|jpeg|gif)$/i.test(f));
+      assetItems = imgs.map((f) => {
+        const nameWithoutExt = f.replace(/\.[^.]+$/, '');
+        const displayLabel = nameWithoutExt + (/\.gif$/i.test(f) ? '（可动）' : '');
+        return ({
+          label: displayLabel,
+          type: 'radio',
+          checked: f === currentSelection,
+          click: async () => {
+          try {
+            // 写入 settings.json
+            let data = {};
+            if (fs.existsSync(settingsFile)) {
+              try { data = JSON.parse(await fs.promises.readFile(settingsFile, 'utf8')) || {}; } catch (e) { data = {}; }
+            }
+            data.petAsset = f;
+            await fs.promises.writeFile(settingsFile, JSON.stringify(data, null, 2), 'utf8');
+            // 通知渲染进程更新
+            if (mainWindow && mainWindow.webContents) {
+              mainWindow.webContents.send('pet-selection-changed', f);
+            }
+          } catch (err) {
+            console.error('写入选择失败:', err);
+          }
+        }
+        });
+      });
+    }
+  } catch (err) {
+    console.error('读取 assets 目录失败:', err);
+    assetItems = [];
+  }
+
+  // 如果没有任何可用素材，提供占位项
+  if (assetItems.length === 0) {
+    assetItems = [
+      { label: '（无可用素材）', enabled: false }
+    ];
+  }
+
   const template = [
     {
       label: "置顶显示",
       type: "checkbox",
-      checked: isAlwaysOnTop, // 菜单项的选中状态与变量同步
+      checked: isAlwaysOnTop,
       click: () => {
-        isAlwaysOnTop = !isAlwaysOnTop; // 点击时切换状态
-        mainWindow.setAlwaysOnTop(isAlwaysOnTop); // 并应用到窗口
+        isAlwaysOnTop = !isAlwaysOnTop;
+        if (mainWindow) mainWindow.setAlwaysOnTop(isAlwaysOnTop);
       },
     },
-    { type: "separator" }, // 分隔线
+    { type: 'separator' },
+    {
+      label: '选择素材',
+      submenu: assetItems,
+    },
+    { type: 'separator' },
     {
       label: "退出",
-      click: () => {
-        app.quit(); // 点击时退出应用
-      },
+      click: () => { app.quit(); },
     },
   ];
+
   const menu = Menu.buildFromTemplate(template);
-  menu.popup({ window: mainWindow }); // 在主窗口上弹出菜单
+  menu.popup({ window: mainWindow });
 });
 
 let isAlwaysOnTop = true;
