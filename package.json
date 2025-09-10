@@ -1,6 +1,6 @@
 {
   "name": "shuodedaoli-deskpet",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "description": "A cute desktop pet of 'Shuodedaoli' built with Electron and Vue 3.",
   "main": "main/main.js",
   "scripts": {

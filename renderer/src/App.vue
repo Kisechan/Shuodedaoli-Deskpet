@@ -2,7 +2,7 @@
 import { ref, onMounted, reactive, computed } from "vue";
 import { Howl } from "howler";
 
-import defaultPet from "/public/pets/普通型道理.gif";
+import defaultPet from "/public/pets/说的道理.gif";
 
 // 状态
 const soundFiles = ref([]);
