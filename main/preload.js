@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onPetSelectionChanged: (callback) => {
     ipcRenderer.on('pet-selection-changed', (_, fileName) => callback(fileName));
   },
+  getPetFiles: () => ipcRenderer.invoke('get-pet-files'),
+  getPetUrl: (fileName) => ipcRenderer.invoke('get-pet-url', fileName),
   showTooltip: (text) => ipcRenderer.send('show-tooltip', text),
   onUpdatePosition: (callback) => {
     ipcRenderer.on('update-position', (_, position) => callback(position))

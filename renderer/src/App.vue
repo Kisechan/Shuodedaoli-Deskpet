@@ -2,13 +2,7 @@
 import { ref, onMounted, reactive, computed } from "vue";
 import { Howl } from "howler";
 
-// 默认图片（打包时位于 assets）
-import defaultPet from "./assets/普通型道理.gif";
-
-// 列出 renderer/src/assets 下的图片资源（Vite 特性）
-// 只匹配常见的图片后缀
-const modules = import.meta.glob('./assets/*.{png,jpg,jpeg,gif}', { as: 'url' });
-const assetEntries = Object.entries(modules);
+import defaultPet from "/public/pets/普通型道理.gif";
 
 // 状态
 const soundFiles = ref([]);
@@ -18,40 +12,53 @@ const isLoading = ref(true);
 const isPlaying = ref(false);
 
 // 处理宠物素材选择
-const assetList = assetEntries.map(([path, resolver]) => ({ path, resolver }));
-const assetPreviews = ref([]); // { path, url }
+const assetPreviews = ref([]); // { name, fileName, url }
 const selectedAsset = ref(null); // 将保存为 URL
 const showSettings = ref(false);
 
 const selectedAssetName = computed(() => {
   if (!selectedAsset.value) return null;
-  // 从路径中取文件名
+  const match = assetPreviews.value.find(p => p.url === selectedAsset.value);
+  if (match) return match.name;
+  // fallback: 从 URL 中取最后一段
   const parts = selectedAsset.value.split('/');
   return parts[parts.length - 1];
 });
 
 async function loadSavedSelection() {
-  // 优先从主进程读取持久化选择
-  if (window.electronAPI && typeof window.electronAPI.getPetSelection === 'function') {
-    try {
-      const assetPath = await window.electronAPI.getPetSelection();
-      if (assetPath) {
-        // assetPath 存储为相对于 assets 的文件名，例如 "pet2.gif"
-        const match = assetList.find(a => a.path.endsWith('/' + assetPath));
+  // 优先从主进程读取持久化选择（返回 fileName）
+  try {
+    if (window.electronAPI && typeof window.electronAPI.getPetSelection === 'function') {
+      const fileName = await window.electronAPI.getPetSelection();
+      if (fileName) {
+        const match = assetPreviews.value.find(p => p.fileName === fileName);
         if (match) {
-          selectedAsset.value = await match.resolver();
+          selectedAsset.value = match.url;
           return;
         }
+        // 如果 assetPreviews 中没有，但文件名存在，尝试直接请求 URL
+        if (window.electronAPI && typeof window.electronAPI.getPetUrl === 'function') {
+          const url = await window.electronAPI.getPetUrl(fileName);
+          if (url) { selectedAsset.value = url; return; }
+        }
       }
-    } catch (e) {
-      console.error('读取保存的宠物素材失败:', e);
     }
+  } catch (e) {
+    console.error('读取保存的宠物素材失败:', e);
   }
   // fallback: localStorage
-  const ls = localStorage.getItem('petAsset');
-  if (ls) {
-    const match = assetList.find(a => a.path.endsWith('/' + ls));
-    if (match) selectedAsset.value = await match.resolver();
+  try {
+    const ls = localStorage.getItem('petAsset');
+    if (ls) {
+      const match = assetPreviews.value.find(p => p.fileName === ls);
+      if (match) { selectedAsset.value = match.url; return; }
+      if (window.electronAPI && typeof window.electronAPI.getPetUrl === 'function') {
+        const url = await window.electronAPI.getPetUrl(ls);
+        if (url) selectedAsset.value = url;
+      }
+    }
+  } catch (e) {
+    // ignore
   }
 }
 
@@ -81,19 +88,29 @@ onMounted(async () => {
       isLoading.value = false;
     }
   }
-  await loadSavedSelection();
-  // 预解析所有资源的 URL，用于设置面板的缩略图显示
+  // 从主进程读取 public/pets 下的素材文件名，然后为每个文件请求可用 URL
   try {
-    const previews = await Promise.all(assetList.map(async (a) => ({ path: a.path, url: await a.resolver() })));
-    assetPreviews.value = previews;
+    if (window.electronAPI && typeof window.electronAPI.getPetFiles === 'function') {
+      const files = await window.electronAPI.getPetFiles();
+      const previews = await Promise.all(files.map(async (file) => {
+        const url = await window.electronAPI.getPetUrl(file);
+        const name = file.replace(/\.[^.]+$/, '');
+        const displayName = name + (/\.gif$/i.test(file) ? '（可动）' : '');
+        return { fileName: file, url, name: displayName };
+      }));
+      assetPreviews.value = previews;
+    }
   } catch (e) {
-    console.error('解析素材预览失败:', e);
+    console.error('获取 pets 列表失败:', e);
   }
+
+  // 加载并应用保存的选择（依赖于 assetPreviews 已构建）
+  await loadSavedSelection();
 
   // 监听主进程通过右键菜单发来的选择变更
   if (window.electronAPI && typeof window.electronAPI.onPetSelectionChanged === 'function') {
     window.electronAPI.onPetSelectionChanged(async (fileName) => {
-      const match = assetPreviews.value.find(p => p.path.endsWith('/' + fileName));
+      const match = assetPreviews.value.find(p => p.fileName === fileName);
       if (match) selectedAsset.value = match.url;
     });
   }
@@ -170,15 +187,9 @@ function handleMouseUp() {
 function handleRightClick() { window.electronAPI.showContextMenu(); }
 
 async function chooseAsset(entry) {
-  // entry can be either {path, resolver} or a preview {path, url}
-  if (entry.url) {
-    selectedAsset.value = entry.url;
-    await saveSelection(entry.path);
-  } else {
-    const url = await entry.resolver();
-    selectedAsset.value = url;
-    await saveSelection(entry.path);
-  }
+  // entry is { fileName, url, name }
+  selectedAsset.value = entry.url;
+  await saveSelection(entry.fileName);
   showSettings.value = false;
 }
 </script>

@@ -123,9 +123,9 @@ ipcMain.handle('set-pet-selection', async (_, petAsset) => {
 });
 
 ipcMain.on("show-context-menu", async () => {
-  // 尝试动态读取 renderer 下的 assets 目录，开发/生产路径均尝试
-  const devAssets = path.join(__dirname, "../renderer/src/assets");
-  const prodAssets = path.join(__dirname, "../renderer/dist/assets");
+  // 尝试动态读取 renderer 下的 public/pets 目录，开发/生产路径均尝试
+  const devAssets = path.join(__dirname, "../renderer/public/pets");
+  const prodAssets = path.join(__dirname, "../renderer/dist/pets");
   let assetsDir = null;
   if (fs.existsSync(devAssets)) assetsDir = devAssets;
   else if (fs.existsSync(prodAssets)) assetsDir = prodAssets;
@@ -210,6 +210,35 @@ ipcMain.on("show-context-menu", async () => {
 
   const menu = Menu.buildFromTemplate(template);
   menu.popup({ window: mainWindow });
+});
+
+// 提供给渲染进程：列出 public/pets 中的素材文件（开发/生产路径）
+ipcMain.handle('get-pet-files', async () => {
+  const devDir = path.join(__dirname, '../renderer/public/pets');
+  const prodDir = path.join(__dirname, '../renderer/dist/pets');
+  const dir = fs.existsSync(devDir) ? devDir : (fs.existsSync(prodDir) ? prodDir : null);
+  if (!dir) return [];
+  try {
+    const files = await fs.promises.readdir(dir);
+    return files.filter(f => /\.(png|jpg|jpeg|gif)$/i.test(f));
+  } catch (e) {
+    console.error('读取 pets 目录失败:', e);
+    return [];
+  }
+});
+
+ipcMain.handle('get-pet-url', (_, fileName) => {
+  // 在开发时，public 文件由 dev server 以根路径提供
+  if (process.env.NODE_ENV === 'development') {
+    return `http://localhost:5173/pets/${encodeURIComponent(fileName)}`;
+  }
+  // 生产时，从 dist/pets 返回 file:// URL
+  const prodPath = path.join(__dirname, '../renderer/dist/pets', fileName);
+  if (fs.existsSync(prodPath)) return `file://${prodPath}`;
+  // fallback: try public path in source tree
+  const devPath = path.join(__dirname, '../renderer/public/pets', fileName);
+  if (fs.existsSync(devPath)) return `file://${devPath}`;
+  return null;
 });
 
 let isAlwaysOnTop = true;
