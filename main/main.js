@@ -270,7 +270,7 @@ function createWindow() {
     // 修改托盘图标路径以确保在开发和生产环境中正确加载
     const iconPath = process.env.NODE_ENV === "development"
       ? path.join(__dirname, "../assets/icon.ico") // 开发环境路径
-      : path.join(process.resourcesPath, "assets/icon.ico"); // 生产环境路径
+      : path.join(__dirname, "../renderer/public/images/icon.ico"); // 生产环境路径
 
     const trayIcon = nativeImage.createFromPath(iconPath);
     if (trayIcon.isEmpty()) {
