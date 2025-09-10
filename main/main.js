@@ -1,9 +1,12 @@
-const { app, BrowserWindow, ipcMain, Menu } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu, Tray, nativeImage } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
 const fs = require("fs");
 
 app.disableHardwareAcceleration(); // 高 DPI 缩放修复
+
+let tray = null;
+let isQuiting = false;
 
 // 音效播放器
 function playAudioFile(filePath) {
@@ -204,7 +207,7 @@ ipcMain.on("show-context-menu", async () => {
     { type: 'separator' },
     {
       label: "退出",
-      click: () => { app.quit(); },
+  click: () => { isQuiting = true; app.quit(); },
     },
   ];
 
@@ -248,11 +251,12 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 200,
     height: 200,
-    transparent: true, // 开启透明窗口
-    frame: false, // 无边框窗口
-    resizable: false, // 禁止调整大小
-    title: "说的道理桌宠",
-    alwaysOnTop: isAlwaysOnTop, // 窗口始终在最上层
+    transparent: true,  // 开启透明窗口
+    frame: false,       // 无边框窗口
+    resizable: false,   // 禁止调整大小
+    title: "说的道理桌面宠物（前端）",
+    alwaysOnTop: isAlwaysOnTop,   // 窗口始终在最上层
+    skipTaskbar: true,  // 不在任务栏显示
     icon: path.join(__dirname, "../build/icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -260,6 +264,23 @@ function createWindow() {
       webSecurity: false,
     },
   });
+
+  // 创建托盘图标
+  try {
+    // 修改托盘图标路径以确保在开发和生产环境中正确加载
+    const iconPath = process.env.NODE_ENV === "development"
+      ? path.join(__dirname, "../assets/icon.ico") // 开发环境路径
+      : path.join(process.resourcesPath, "assets/icon.ico"); // 生产环境路径
+
+    const trayIcon = nativeImage.createFromPath(iconPath);
+    if (trayIcon.isEmpty()) {
+      console.error("托盘图标加载失败，路径:", iconPath);
+    } else {
+      tray = new Tray(trayIcon);
+    }
+  } catch (e) {
+    console.error('创建托盘失败:', e);
+  }
 
   // 当渲染进程传来这个事件时，就移动窗口
   ipcMain.on("move-window", (event, { x, y }) => {
@@ -281,6 +302,23 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, "../renderer/dist/index.html"));
   }
+
+  // 启动时显示窗口（允许随后最小化到托盘）
+  try { mainWindow.show(); } catch (e) {}
+
+  // 最小化时隐藏到托盘
+  mainWindow.on('minimize', (event) => {
+    event.preventDefault();
+    mainWindow.hide();
+  });
+
+  // 关闭窗口时隐藏到托盘，除非用户选择真正退出
+  mainWindow.on('close', (event) => {
+    if (!isQuiting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+  });
 }
 
 app.whenReady().then(createWindow);
